@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+    <jmxConfigurator/>
+
+    <logger name="obsplat.ui.petclinic.web" level="INFO"/>
+    <logger name="obsplat.ui.petclinic.dto" level="INFO"/>
+    <root level="ERROR" />
+</configuration>

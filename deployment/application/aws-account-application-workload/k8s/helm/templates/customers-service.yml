@@ -1,0 +1,167 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: obsplat-customers-service
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: aws-collector-config
+  namespace: obsplat-customers-service
+data:
+  otel-local-config.yaml: |-
+    extensions:
+      health_check:
+      pprof:
+        endpoint: 0.0.0.0:1777
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: 'customers-service-prometheus-receiver'
+              metrics_path: '/customers-service/prometheus'
+              scrape_interval: 5s
+              static_configs:
+                - targets: ['customers-service.obsplat-customers-service.svc.cluster.local']
+                  labels:
+                    application: 'CustomersService'
+                    region: '{{.Values.AWSRegion}}'
+
+    processors:
+      batch:
+
+    exporters:
+      logging:
+        loglevel: debug
+      otlp/data-prepper:
+        endpoint: {{.Values.DataPrepperHostIP}}:{{.Values.DataPrepperHostPort}}
+        insecure: true
+      awsprometheusremotewrite:
+        endpoint: "{{.Values.AWSPrometheusRemoteWriteEndpointURL}}"
+        aws_auth:
+          region: "{{.Values.AWSRegion}}"
+          service: "aps"
+          role_arn: "{{.Values.AWSMonitoringAccountRoleARN}}"
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [otlp/data-prepper]
+        metrics:
+          receivers: [prometheus]
+          exporters: [awsprometheusremotewrite]
+      extensions: [pprof]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: customers-service
+  name: customers-service
+  namespace: obsplat-customers-service
+spec:
+  ports:
+    - name: "80"
+      port: 80
+      targetPort: 8080
+  selector:
+    app: customers-service
+  type: NodePort
+status:
+  loadBalancer: {}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+  labels:
+    app: customers-service
+  name: customers-service
+  namespace: obsplat-customers-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customers-service
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: customers-service
+    spec:
+      containers:
+        - image: {{.Values.ImageRepositoryPrefix}}/customers-service:latest
+          name: application-customers-service
+          imagePullPolicy: Always
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 10"]
+          env:
+            - name: OTEL_OTLP_ENDPOINT
+              value: "localhost:4317"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name=CustomersService,service.namespace=ObsPlat"
+            - name: OTEL_METRICS_EXPORTER
+              value: "none"
+            - name: PETCLINIC_DATABASE_URL
+              value: "{{.Values.RDSDataSourceURL}}/customers_db"              
+            - name: PETCLINIC_DATABASE_USERNAME
+              value: "{{.Values.RDSDataSourceUsername}}"
+            - name: PETCLINIC_DATABASE_PASSWORD
+              value: "{{.Values.RDSDataSourcePassword}}"                            
+            - name: AWS_REGION
+              value: "{{.Values.AWSRegion}}"
+          ports:
+            - containerPort: 8080
+        - name: aws-otel-collector
+          image: amazon/aws-otel-collector:v0.12.0
+          env:
+            - name: AWS_REGION
+              value: "{{.Values.AWSRegion}}"
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: config-volume
+              mountPath: /otel/otel-local-config.yaml
+              subPath: otel-local-config.yaml
+          ports:
+            - containerPort: 4317
+            - containerPort: 55680
+            - containerPort: 8889
+          args: ["--config=/otel/otel-local-config.yaml", "--log-level=INFO"]
+      volumes:
+        - name: config-volume
+          configMap:
+            name: aws-collector-config
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  namespace: obsplat-customers-service
+  name: obsplat-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: obsplat-alb-ingress
+    alb.ingress.kubernetes.io/healthcheck-path: /customers-service/health
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /customers-service/*
+            backend:
+              serviceName: customers-service
+              servicePort: 80

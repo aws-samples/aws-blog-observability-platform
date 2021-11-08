@@ -1,1 +1,4 @@
-Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+[aws-blog-observability-platform]
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+
+This project contains modified source code originally from spring-petclinic-microservices project (https://github.com/spring-petclinic/spring-petclinic-microservices) released under the Apache 2.0 license.

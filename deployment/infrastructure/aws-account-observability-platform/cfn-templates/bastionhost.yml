@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: "Template to create EC2 instance"
+
+Parameters:
+  VpcId:
+    Type: String
+
+  SubnetId:
+    Description: The subnet ID of the public subnet.
+    Type: String
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    AllowedPattern: "[a-z0-9]+\\.[a-z0-9]+"
+    Default: t2.micro
+    ConstraintDescription: cannot be empty
+
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: cannot be empty
+
+  LatestAmi:
+    Description: AMI to deploy to EC2, defaults to Amazon Linux 2
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-ebs"
+
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId:
+        Ref: SubnetId
+      InstanceType:
+        Ref: InstanceType
+      KeyName:
+        Ref: KeyName
+      ImageId:
+        Ref: LatestAmi
+      SecurityGroupIds:
+        - Ref: BastionHostSecurityGroup
+  
+  BastionHostSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "bastion-host-sg"
+      VpcId: !Ref VpcId
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: 0.0.0.0/0

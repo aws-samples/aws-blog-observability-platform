@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: ECR Public Repository resource
+
+Resources:
+  CustomersServiceRepository:
+    Type: AWS::ECR::PublicRepository
+    Properties:
+      RepositoryName: "customers-service"
+      RepositoryCatalogData:
+        OperatingSystems:
+          - "Linux"
+          - "Windows"
+        Architectures:
+          - "x86"
+          - "ARM"
+
+  VisitsServiceRepository:
+    Type: AWS::ECR::PublicRepository
+    Properties:
+      RepositoryName: "visits-service"
+      RepositoryCatalogData:
+        OperatingSystems:
+          - "Linux"
+          - "Windows"
+        Architectures:
+          - "x86"
+          - "ARM"
+  
+  VetsServiceRepository:
+    Type: AWS::ECR::PublicRepository
+    Properties:
+      RepositoryName: "vets-service"
+      RepositoryCatalogData:
+        OperatingSystems:
+          - "Linux"
+          - "Windows"
+        Architectures:
+          - "x86"
+          - "ARM"
+
+  PetClinicUIRepository:
+    Type: AWS::ECR::PublicRepository
+    Properties:
+      RepositoryName: "petclinic-ui"
+      RepositoryCatalogData:
+        OperatingSystems:
+          - "Linux"
+          - "Windows"
+        Architectures:
+          - "x86"
+          - "ARM"

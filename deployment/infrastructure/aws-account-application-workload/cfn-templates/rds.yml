@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: RDS MySQL Resource
+
+Parameters:
+  VpcId:
+    Type: String
+
+  PrivateSubnet1Id:
+    Type: String
+
+  PrivateSubnet2Id:
+    Type: String
+
+  AdminUsername:
+    Type: String
+
+  AdminUserPassword:
+    Type: String
+
+Resources:
+  DataSourceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS DataSource Security Group
+      VpcId: !Ref VpcId
+
+  DataSourceSecurityGroupIngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      FromPort: "3306"
+      ToPort: "3306"
+      GroupId: !Ref DataSourceSecurityGroup
+      IpProtocol: tcp
+      CidrIp: 0.0.0.0/0
+
+  DataSourceSubtNetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Database Subnet Group
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
+        
+  DataSource:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: '5'
+      DBInstanceClass: db.t2.small
+      DBSubnetGroupName: !Ref DataSourceSubtNetGroup
+      Engine: MySQL
+      MasterUsername: !Ref AdminUsername
+      MasterUserPassword: !Ref AdminUserPassword
+      PubliclyAccessible: true
+      VPCSecurityGroups:
+        - !Ref DataSourceSecurityGroup

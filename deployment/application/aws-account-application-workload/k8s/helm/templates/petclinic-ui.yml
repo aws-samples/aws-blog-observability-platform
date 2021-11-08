@@ -1,0 +1,159 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: obsplat-petclinic-ui
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: aws-collector-config
+  namespace: obsplat-petclinic-ui
+data:
+  otel-local-config.yaml: |-
+    extensions:
+      health_check:
+      pprof:
+        endpoint: 0.0.0.0:1777
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: 'petclinic-ui-prometheus-receiver'
+              metrics_path: '/petclinic-ui/prometheus'
+              scrape_interval: 5s
+              static_configs:
+                - targets: ['petclinic-ui.obsplat-petclinic-ui.svc.cluster.local']
+                  labels:
+                    application: 'PetClinicUI'
+                    region: '{{.Values.AWSRegion}}'
+
+    processors:
+      batch:
+
+    exporters:
+      logging:
+        loglevel: debug
+      otlp/data-prepper:
+        endpoint: {{.Values.DataPrepperHostIP}}:{{.Values.DataPrepperHostPort}}
+        insecure: true
+      awsprometheusremotewrite:
+        endpoint: "{{.Values.AWSPrometheusRemoteWriteEndpointURL}}"
+        aws_auth:
+          region: "{{.Values.AWSRegion}}"
+          service: "aps"
+          role_arn: "{{.Values.AWSMonitoringAccountRoleARN}}"
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [otlp/data-prepper]
+        metrics:
+          receivers: [prometheus]
+          exporters: [awsprometheusremotewrite]
+      extensions: [pprof]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: petclinic-ui
+  name: petclinic-ui
+  namespace: obsplat-petclinic-ui
+spec:
+  ports:
+    - name: "80"
+      port: 80
+      targetPort: 6060
+  selector:
+    app: petclinic-ui
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+  labels:
+    app: petclinic-ui
+  name: petclinic-ui
+  namespace: obsplat-petclinic-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: petclinic-ui
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: petclinic-ui
+    spec:
+      containers:
+        - image: {{.Values.ImageRepositoryPrefix}}/petclinic-ui:latest
+          name: application-petclinic-ui
+          imagePullPolicy: Always
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 10"]
+          env:
+            - name: OTEL_OTLP_ENDPOINT
+              value: "localhost:4317"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name=PetClinicUI,service.namespace=ObsPlat"
+            - name: OTEL_METRICS_EXPORTER
+              value: "none"
+            - name: AWS_REGION
+              value: "{{.Values.AWSRegion}}"
+          ports:
+            - containerPort: 6060
+        - name: aws-otel-collector
+          image: amazon/aws-otel-collector:v0.12.0
+          env:
+            - name: AWS_REGION
+              value: "{{.Values.AWSRegion}}"
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: config-volume
+              mountPath: /otel/otel-local-config.yaml
+              subPath: otel-local-config.yaml
+          ports:
+            - containerPort: 4317
+            - containerPort: 55680
+            - containerPort: 8889
+          args: ["--config=/otel/otel-local-config.yaml", "--log-level=INFO"]
+      volumes:
+        - name: config-volume
+          configMap:
+            name: aws-collector-config
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  namespace: obsplat-petclinic-ui
+  name: obsplat-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: obsplat-alb-ingress
+    alb.ingress.kubernetes.io/healthcheck-path: /petclinic-ui/health
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /petclinic-ui/*
+            backend:
+              serviceName: petclinic-ui
+              servicePort: 80

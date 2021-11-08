@@ -1,0 +1,65 @@
+server:
+    servlet:
+        context-path: /customers-service
+    shutdown: graceful
+    lifecycle:
+        timeout-per-shutdown-phase: 15
+    port: 8080
+    compression:
+        enabled: true
+        mime-types: application/json,text/css,application/javascript
+        min-response-size: 2048
+
+logging:
+    pattern:
+        console: "${CONSOLE_LOG_PATTERN: %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([${spring.application.name},%X{trace_id},%X{span_id}]) %clr(%logger){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}"
+
+# Metrics
+management:
+    endpoint:
+        health:
+            probes:
+                enabled: true
+    health:
+        livenessState:
+            enabled: true
+        readinessState:
+            enabled: true
+        restart:
+            enabled: true
+        metrics:
+            enabled: true
+        prometheus:
+            enabled: true
+    endpoints:
+        web:
+            base-path: /
+            exposure:
+                include: '*'
+    metrics:
+        export:
+            prometheus:
+                enabled: true
+        tags:
+            application: "CustomersService"
+            region: "${AWS_REGION}"
+spring:
+    application:
+      name: CustomersService
+
+    main:
+      banner-mode: "off"
+
+    datasource:
+        url: ${PETCLINIC_DATABASE_URL}
+        username: ${PETCLINIC_DATABASE_USERNAME}
+        password: ${PETCLINIC_DATABASE_PASSWORD}
+
+    jpa:
+        show-sql: false
+        hibernate:
+            ddl-auto: none
+            generate-ddl: false
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.MySQL8Dialect

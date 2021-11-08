@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: 'Create a cross-account role that authorizes access to prometheus remote-write endpoint'
+
+Parameters:
+  RoleName:
+    Type: String
+  
+  CrossAccountId:
+    Type: String
+
+Resources:
+  CrossAccountRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Policies:
+          -
+            PolicyName: "CustomPrometheusRemoteWriteAccessPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                -
+                  Effect: "Allow"
+                  Action: "aps:RemoteWrite"
+                  Resource: "*"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: 
+            "AWS": !Join [ "", [ "arn:aws:iam::", !Ref CrossAccountId, ":root" ] ]
+          Action:
+          - sts:AssumeRole

@@ -1,0 +1,60 @@
+server:
+  shutdown: graceful
+  servlet:
+    context-path: /petclinic-ui
+  lifecycle:
+    timeout-per-shutdown-phase: 15
+  port: 6060
+  compression:
+    enabled: true
+    mime-types: application/json,text/css,application/javascript
+    min-response-size: 2048
+
+logging:
+  pattern:
+    console: "${CONSOLE_LOG_PATTERN: %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([${spring.application.name},%X{trace_id},%X{span_id}]) %clr(%logger){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}"
+
+customers-service-id: http://customers-service.obsplat-customers-service.svc.cluster.local/customers-service
+visits-service-id: http://visits-service.obsplat-visits-service.svc.cluster.local/visits-service
+vets-service-id: http://vets-service.obsplat-vets-service.svc.cluster.local/vets-service
+# Metrics
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+    restart:
+      enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: '*'
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: "PetClinicUI"
+      region: "${AWS_REGION}"
+spring:
+  application:
+    name: PetClinicUI
+  main:
+    banner-mode: "off"
+  security:
+    basic:
+      enabled: false
+  messages:
+    basename: messages/messages
+  resources:
+    static-locations: classpath:/BOOT-INF/classes/static/
