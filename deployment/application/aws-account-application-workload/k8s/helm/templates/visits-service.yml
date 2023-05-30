@@ -146,7 +146,7 @@ spec:
             name: aws-collector-config
 
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   namespace: obsplat-visits-service
@@ -161,7 +161,10 @@ spec:
   rules:
     - http:
         paths:
-          - path: /visits-service/*
+          - path: /visits-service/
+            pathType: Prefix
             backend:
-              serviceName: visits-service
-              servicePort: 80
+              service:
+                name: visits-service
+                port:
+                  number: 80

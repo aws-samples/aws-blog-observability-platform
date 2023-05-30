@@ -138,7 +138,7 @@ spec:
             name: aws-collector-config
 
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   namespace: obsplat-petclinic-ui
@@ -153,7 +153,10 @@ spec:
   rules:
     - http:
         paths:
-          - path: /petclinic-ui/*
+          - path: /petclinic-ui/
+            pathType: Prefix
             backend:
-              serviceName: petclinic-ui
-              servicePort: 80
+              service:
+                name: petclinic-ui
+                port:
+                  number: 80
