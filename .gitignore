@@ -1,0 +1,5 @@
+*.jar
+delete.env
+*.pem
+.DS_Store
+dnsentry.json

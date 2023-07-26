@@ -6,7 +6,7 @@ source delete.env
 
 #Delete DNS Entry for VPC Endpoint from Route53 Private Hosted zone in Observability account
 
-if [ -f dnsentry.json ]; then sed -i "s/CREATE/DELETE/g" dnsentry.json ; fi
+if [ -f dnsentry.json ]; then sed -i '' 's/CREATE/DELETE/g' dnsentry.json ; fi
 aws route53 change-resource-record-sets \
     --hosted-zone $HOSTED_ZONE \
     --change-batch file://dnsentry.json \
